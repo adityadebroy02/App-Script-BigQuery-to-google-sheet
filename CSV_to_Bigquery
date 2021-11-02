@@ -1,0 +1,55 @@
+/**
+ * Loads a CSV into BigQuery
+ */
+function loadCsv() {
+  // Replace this value with the project ID listed in the Google
+  // Cloud Platform project.
+  var projectId = 'XXXXXXXX';
+  // Create a dataset in the BigQuery UI (https://bigquery.cloud.google.com)
+  // and enter its ID below.
+  var datasetId = 'YYYYYYYY';
+  // Sample CSV file of Google Trends data conforming to the schema below.
+  // https://docs.google.com/file/d/0BwzA1Orbvy5WMXFLaTR1Z1p2UDg/edit
+  var csvFileId = '0BwzA1Orbvy5WMXFLaTR1Z1p2UDg';
+
+  // Create the table.
+  var tableId = 'pets_' + new Date().getTime();
+  var table = {
+    tableReference: {
+      projectId: projectId,
+      datasetId: datasetId,
+      tableId: tableId
+    },
+    schema: {
+      fields: [
+        {name: 'week', type: 'STRING'},
+        {name: 'cat', type: 'INTEGER'},
+        {name: 'dog', type: 'INTEGER'},
+        {name: 'bird', type: 'INTEGER'}
+      ]
+    }
+  };
+  table = BigQuery.Tables.insert(table, projectId, datasetId);
+  Logger.log('Table created: %s', table.id);
+
+  // Load CSV data from Drive and convert to the correct format for upload.
+  var file = DriveApp.getFileById(csvFileId);
+  var data = file.getBlob().setContentType('application/octet-stream');
+
+  // Create the data upload job.
+  var job = {
+    configuration: {
+      load: {
+        destinationTable: {
+          projectId: projectId,
+          datasetId: datasetId,
+          tableId: tableId
+        },
+        skipLeadingRows: 1
+      }
+    }
+  };
+ // job = BigQuery.Jobs.insert(job, projectId, data);
+  Logger.log('Load job started. Check on the status of it here: ' +
+      'https://bigquery.cloud.google.com/jobs/%s', projectId);
+}
