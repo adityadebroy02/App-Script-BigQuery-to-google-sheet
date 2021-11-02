@@ -1,0 +1,61 @@
+/**
+ * Runs a BigQuery query and logs the results in a spreadsheet.
+ */
+function runQuery() {
+  // Replace this value with the project ID listed in the Google
+  // Cloud Platform project.
+  var projectId = '#project_id_under_which_you_have_your_table#';
+
+  var request = {
+    query: 'SELECT * FROM dataset_name.table_name' #Note- This table can be your view which you have created there, go to readme file of this repository to counter error in case of view 
+  };
+  var queryResults = BigQuery.Jobs.query(request, projectId);
+  var jobId = queryResults.jobReference.jobId;
+
+  // Check on status of the Query Job.
+  var sleepTimeMs = 500;
+  while (!queryResults.jobComplete) {
+    Utilities.sleep(sleepTimeMs);
+    sleepTimeMs *= 2;
+    queryResults = BigQuery.Jobs.getQueryResults(projectId, jobId);
+  }
+
+  // Get all the rows of results.
+  var rows = queryResults.rows;
+  while (queryResults.pageToken) {
+    queryResults = BigQuery.Jobs.getQueryResults(projectId, jobId, {
+      pageToken: queryResults.pageToken
+    });
+    rows = rows.concat(queryResults.rows);
+  }
+
+  if (rows) {
+   var ss = SpreadsheetApp.openById("your_google_spreadsheet_id");
+   SpreadsheetApp.setActiveSpreadsheet(ss);    
+   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+   var sheet = spreadsheet.getSheetByName("sheet_name_where_you_want_the_data_from_BQ_table");
+
+
+    // Append the headers.
+    var headers = queryResults.schema.fields.map(function(field) {
+      return field.name;
+    });
+    sheet.appendRow(headers);
+
+    // Append the results.
+    var data = new Array(rows.length);
+    for (var i = 0; i < rows.length; i++) {
+      var cols = rows[i].f;
+      data[i] = new Array(cols.length);
+      for (var j = 0; j < cols.length; j++) {
+        data[i][j] = cols[j].v;
+      }
+    }
+    sheet.getRange(2, 1, rows.length, headers.length).setValues(data);
+
+    Logger.log('Results spreadsheet created: %s',
+        spreadsheet.getUrl());
+  } else {
+    Logger.log('No rows returned.');
+  }
+}
